@@ -3,7 +3,15 @@ const path = require('path')
 const mongoose = require('mongoose')
 const Company = require('./db/model')
 const bodyParser = require('body-parser')
-const keys = require('./keys.json')
+
+let keys
+let MONGO_URL
+if (process.env.NODE_ENV === 'production') {
+  MONGO_URL = process.env.MONGO_URL
+} else {
+  keys = require('./keys.json')
+  MONGO_URL = keys.MONGO_URL
+}
 
 const app = express()
 const router = express.Router()
@@ -43,18 +51,19 @@ app.listen(PORT, function () {
   console.log(`API running on PORT ${PORT}`)
 })
 
-mongoose.connect(keys.MONGO_URL)
+mongoose.connect(MONGO_URL)
 
-router.route('/add')
-  .post((req, res) => {
-    let company = new Company()
-    company.name = req.body.name
-    company.email = req.body.email
-
-    company.save((err) => {
+router.route('/companies')
+  .get((req, res) => {
+    Company.find((err, companies) => {
       if (err) res.send(err)
-      else {
-        res.json({message: 'Company details added'})
-      }
+      res.json(companies)
+    })
+  })
+  .post((req, res) => {
+    let {name, email} = req.body
+    Company.findOneAndUpdate({name}, {$set: {email}}, {new: true}, (err, company) => {
+      if (err) res.send(err)
+      res.json(company)
     })
   })
