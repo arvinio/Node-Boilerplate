@@ -1,16 +1,15 @@
 const express = require('express')
 const path = require('path')
-const mongoose = require('mongoose')
-const Company = require('./db/model')
 const bodyParser = require('body-parser')
+const fetch = require('isomorphic-fetch')
 
 let keys
-let MONGO_URL
+let YELP_KEY
 if (process.env.NODE_ENV === 'production') {
-  MONGO_URL = process.env.MONGO_URL
+  YELP_KEY = process.env.YELP_KEY
 } else {
   keys = require('./keys.json')
-  MONGO_URL = keys.MONGO_URL
+  YELP_KEY = keys.yelpKey
 }
 
 const app = express()
@@ -51,19 +50,14 @@ app.listen(PORT, function () {
   console.log(`API running on PORT ${PORT}`)
 })
 
-mongoose.connect(MONGO_URL)
-
-router.route('/companies')
+router.route('/getBusinesses')
   .get((req, res) => {
-    Company.find((err, companies) => {
-      if (err) res.send(err)
-      res.json(companies)
-    })
-  })
-  .post((req, res) => {
-    let {name, email} = req.body
-    Company.findOneAndUpdate({name}, {$set: {email}}, {new: true}, (err, company) => {
-      if (err) res.send(err)
-      res.json(company)
+    const {term, location, sortBy} = req.query
+    fetch(`https://api.yelp.com/v3/businesses/search?term=${term}&location=${location}&sort_by=${sortBy}`, {
+      headers: {
+        Authorization: `Bearer ${YELP_KEY}`
+      }
+    }).then(res => res.json()).then(response => {
+      res.json(response)
     })
   })
